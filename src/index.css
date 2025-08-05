@@ -10,3 +10,8 @@
     padding: 0 20px;
   }
 }
+
+@theme {
+  --color-red: #9e2a2b;
+  --color-darkred: #540b0e;
+}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import Spinner from '../components/Spinner';
+import { getAccessToken, setAccessToken } from '../components/tokenStorage';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -10,19 +11,60 @@ const Login = () => {
     const [loginAlert, setloginAlert] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        fetch('http://localhost:3000/api/check-auth', {
-            method: 'GET',
-            credentials: 'include',
-        })
+    const checkToken = async () => {
+        setIsLoading(true)
+        try {
+            const accessToken = getAccessToken();
+            console.log(accessToken);
+            fetch(`http://localhost:3000/api/auth/check`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            })
             .then((res) => {
-                if (res.ok) {
-                    navigate('/');
+                if (!res.ok) {
+                    navigate('/login');
                 }
             })
             .catch((err) => {
-                console.error(err);
+                // console.error(err);
+                navigate('/login');
             })
+        } catch(err) {
+            console.log(err);
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const refreshToken = async () => {
+        try {
+            const res = await fetch('http://localhost:3000/api/auth/refresh', {
+                method: 'GET',
+                credentials: 'include'
+            })
+
+            const data = await res.json()
+ 
+            if(!res.ok) {
+                console.log(data.message)
+                navigate('/login')
+                return;
+            }
+
+            setAccessToken(data.accessToken);
+            checkToken();
+            navigate('/');
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    useEffect(() => {
+        refreshToken();
+        // checkToken();
     }, [])
 
     useEffect(() => {
@@ -50,6 +92,7 @@ const Login = () => {
             if (res.ok) {
                 // alert('Logged in succefully!');
                 localStorage.setItem('username', form.username);
+                setAccessToken(data.accessToken);
                 navigate('/');
             } else {
                 setloginAlert(data.message || "Login failed");
